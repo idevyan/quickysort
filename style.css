@@ -1,0 +1,191 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: hidden;
+    color: #ffffff;
+    padding: 20px;
+    position: relative;
+}
+
+/* Esferas de luz difuminadas de fondo */
+.circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 1;
+    animation: float 8s ease-in-out infinite alternate;
+}
+
+.circle-1 {
+    width: 320px;
+    height: 320px;
+    background: #ff007f;
+    top: 5%;
+    left: 10%;
+}
+
+.circle-2 {
+    width: 380px;
+    height: 380px;
+    background: #00f2fe;
+    bottom: 5%;
+    right: 10%;
+}
+
+.circle-3 {
+    width: 220px;
+    height: 220px;
+    background: #7928ca;
+    bottom: 35%;
+    left: 25%;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px) scale(1); }
+    100% { transform: translateY(-35px) scale(1.08); }
+}
+
+/* Contenedor Efecto Cristal (Glassmorphism) */
+.glass-container {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 950px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    text-align: center;
+}
+
+header h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: #00f2fe;
+    margin-bottom: 6px;
+}
+
+header h1 {
+    font-size: 2.3rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, #ff007f, #00f2fe);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+}
+
+header p.author {
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 20px;
+}
+
+header p.author span {
+    color: #ff007f;
+    font-weight: 600;
+}
+
+/* Visualizador de Barras */
+.array-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 260px;
+    gap: 12px;
+    margin: 25px 0;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bar {
+    width: 45px;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(5px);
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Colores de estado dinámicos */
+.bar.current {
+    background: #ffcc00 !important;
+    transform: scale(1.08);
+    color: #000;
+}
+
+.bar.min {
+    background: #ff007f !important;
+    box-shadow: 0 0 18px #ff007f;
+}
+
+.bar.sorted {
+    background: #00f2fe !important;
+    box-shadow: 0 0 12px #00f2fe;
+}
+
+/* Mensaje explicativo */
+.status-box {
+    font-size: 1rem;
+    min-height: 28px;
+    margin-bottom: 10px;
+    color: #e2e8f0;
+}
+
+/* Botones */
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(5px);
+    color: #ffffff;
+    padding: 12px 26px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+button:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 242, 254, 0.4);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, rgba(255,0,127,0.55), rgba(0,242,254,0.55));
+}
