@@ -1,4 +1,4 @@
-// --- SISTEMA DE AUDIO MECÁNICO / ARCADE ---
+// --- SINTETIZADOR DE AUDIO (Web Audio API) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
@@ -8,7 +8,7 @@ function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
         osc.type = type;
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start();
@@ -16,254 +16,305 @@ function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
     } catch (e) {}
 }
 
-// Sonido de servo de la grúa moviéndose
-function playServoSound() {
-    playTone(220, 'triangle', 0.18, 0.08);
-    setTimeout(() => playTone(180, 'sawtooth', 0.12, 0.05), 50);
+const sfx = {
+    move() {
+        playTone(180, 'sawtooth', 0.15, 0.05);
+        playTone(140, 'triangle', 0.15, 0.08);
+    },
+    grab() {
+        playTone(600, 'square', 0.08, 0.1);
+        setTimeout(() => playTone(820, 'sine', 0.06, 0.08), 20);
+    },
+    compare(val) {
+        playTone(280 + val * 60, 'sine', 0.09, 0.07);
+    },
+    swap() {
+        playTone(220, 'triangle', 0.25, 0.12);
+        setTimeout(() => playTone(330, 'triangle', 0.2, 0.12), 80);
+    },
+    success() {
+        [440, 554, 659, 880].forEach((freq, idx) => {
+            setTimeout(() => playTone(freq, 'sine', 0.2, 0.1), idx * 90);
+        });
+    }
+};
+
+// --- CONFIGURACIÓN DE POSICIONES Y ESTADOS ---
+const NUM_BLOCKS = 8;
+const SVG_NS = "http://www.w3.org/2000/svg";
+const STAGE = document.getElementById('stage-svg');
+const STATUS_TERMINAL = document.getElementById('status-terminal');
+const BTN_RUN = document.getElementById('btn-run');
+const BTN_RESET = document.getElementById('btn-reset');
+
+// Coordenadas fijas
+const RAIL_Y = 50;
+const FLOOR_Y = 430;
+const LIFT_PIVOT_Y = 135;  // Altura alta de suspensión (como bloque 4 en imagen)
+const LIFT_MIN_Y = 240;    // Altura media de suspensión (como bloque 5 en imagen)
+const BLOCK_WIDTH = 58;
+const SLOT_SPACING = 110;
+const FIRST_SLOT_X = 115;
+
+let values = [];
+let blockObjects = [];
+
+function getSlotX(index) {
+    return FIRST_SLOT_X + index * SLOT_SPACING;
 }
 
-// Sonido mecánico de gancho enganchando
-function playClankSound() {
-    playTone(520, 'square', 0.08, 0.15);
-    setTimeout(() => playTone(800, 'sine', 0.06, 0.1), 30);
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Sonido de comparación rápida
-function playCompareSound(val) {
-    playTone(300 + val * 60, 'sine', 0.08, 0.08);
+// Estructura de Bloque
+class VisualBlock {
+    constructor(val, initialIndex) {
+        this.val = val;
+        this.index = initialIndex;
+        this.state = 'pending'; // 'pending', 'sorted', 'pivot', 'min'
+        
+        // Altura proporcional (como en la imagen: 1 es bajo, 8 es alto)
+        this.height = 38 + val * 10;
+        this.x = getSlotX(initialIndex);
+        this.y = FLOOR_Y - this.height;
+    }
+
+    setTarget(x, y) {
+        this.x = x;
+        this.y = y;
+    }
 }
 
-// Sonido de fanfarria al completar
-function playVictory() {
-    const notes = [440, 554, 659, 880];
-    notes.forEach((freq, idx) => {
-        setTimeout(() => playTone(freq, 'triangle', 0.2, 0.15), idx * 110);
+// Inicializar arreglo aleatorio
+function setupArray() {
+    values = [1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5);
+    blockObjects = values.map((val, idx) => new VisualBlock(val, idx));
+    renderScene(null, null);
+    STATUS_TERMINAL.textContent = "SISTEMA LISTO // PRESIONE EJECUTAR ORDENAMIENTO";
+}
+
+// Dibuja riel, grúa, cables y bloques en SVG
+function renderScene(pivotIdx = null, minIdx = null) {
+    STAGE.innerHTML = '';
+
+    // 1. Riel horizontal superior
+    const rail = document.createElementNS(SVG_NS, 'line');
+    rail.setAttribute('x1', '50');
+    rail.setAttribute('y1', RAIL_Y);
+    rail.setAttribute('x2', '950');
+    rail.setAttribute('y2', RAIL_Y);
+    rail.setAttribute('stroke', '#1e3a5f');
+    rail.setAttribute('stroke-width', '2');
+    STAGE.appendChild(rail);
+
+    // 2. Línea de piso
+    const floor = document.createElementNS(SVG_NS, 'line');
+    floor.setAttribute('x1', '50');
+    floor.setAttribute('y1', FLOOR_Y);
+    floor.setAttribute('x2', '950');
+    floor.setAttribute('y2', FLOOR_Y);
+    floor.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
+    floor.setAttribute('stroke-width', '2');
+    floor.setAttribute('stroke-dasharray', '6,6');
+    STAGE.appendChild(floor);
+
+    // 3. Mecanismo de Grúa (Carro, Cables Dobles y Ganchos)
+    if (pivotIdx !== null || minIdx !== null) {
+        let trolleyX;
+        if (pivotIdx !== null && minIdx !== null) {
+            trolleyX = (blockObjects[pivotIdx].x + blockObjects[minIdx].x) / 2 + BLOCK_WIDTH / 2;
+        } else if (pivotIdx !== null) {
+            trolleyX = blockObjects[pivotIdx].x + BLOCK_WIDTH / 2;
+        } else {
+            trolleyX = blockObjects[minIdx].x + BLOCK_WIDTH / 2;
+        }
+
+        // Carro superior en el riel con punto central
+        const trolleyGroup = document.createElementNS(SVG_NS, 'g');
+        trolleyGroup.innerHTML = `
+            <rect x="${trolleyX - 26}" y="${RAIL_Y - 8}" width="52" height="16" rx="4" fill="#b45309" stroke="#f59e0b" stroke-width="1.5" />
+            <circle cx="${trolleyX}" cy="${RAIL_Y}" r="2.5" fill="#fef3c7" />
+        `;
+        STAGE.appendChild(trolleyGroup);
+
+        // Cable doble y gancho para Brazo Pivote (Izquierda - Ámbar)
+        if (pivotIdx !== null) {
+            const b = blockObjects[pivotIdx];
+            const hookCenterX = b.x + BLOCK_WIDTH / 2;
+            const hookTopY = b.y - 12;
+
+            const cablesPivot = document.createElementNS(SVG_NS, 'g');
+            cablesPivot.innerHTML = `
+                <!-- Cables dobles -->
+                <line x1="${trolleyX - 12}" y1="${RAIL_Y + 8}" x2="${hookCenterX - 10}" y2="${hookTopY}" stroke="#f59e0b" stroke-width="2" />
+                <line x1="${trolleyX - 6}" y1="${RAIL_Y + 8}" x2="${hookCenterX + 10}" y2="${hookTopY}" stroke="#f59e0b" stroke-width="2" />
+                
+                <!-- Cabezal del gancho -->
+                <rect x="${hookCenterX - 18}" y="${hookTopY - 6}" width="36" height="10" rx="3" fill="#92400e" stroke="#fbbf24" stroke-width="1.5" />
+                
+                <!-- Abrazaderas laterales que sostienen el bloque -->
+                <path d="M ${b.x - 4} ${hookTopY + 2} L ${b.x - 4} ${b.y + 14} L ${b.x} ${b.y + 14}" fill="none" stroke="#fbbf24" stroke-width="2.5" />
+                <path d="M ${b.x + BLOCK_WIDTH + 4} ${hookTopY + 2} L ${b.x + BLOCK_WIDTH + 4} ${b.y + 14} L ${b.x + BLOCK_WIDTH} ${b.y + 14}" fill="none" stroke="#fbbf24" stroke-width="2.5" />
+            `;
+            STAGE.appendChild(cablesPivot);
+        }
+
+        // Cable doble y gancho para Brazo Mínimo/Comparador (Derecha - Carmesí)
+        if (minIdx !== null) {
+            const b = blockObjects[minIdx];
+            const hookCenterX = b.x + BLOCK_WIDTH / 2;
+            const hookTopY = b.y - 12;
+
+            const cablesMin = document.createElementNS(SVG_NS, 'g');
+            cablesMin.innerHTML = `
+                <!-- Cables dobles -->
+                <line x1="${trolleyX + 6}" y1="${RAIL_Y + 8}" x2="${hookCenterX - 10}" y2="${hookTopY}" stroke="#f43f5e" stroke-width="2" />
+                <line x1="${trolleyX + 12}" y1="${RAIL_Y + 8}" x2="${hookCenterX + 10}" y2="${hookTopY}" stroke="#f43f5e" stroke-width="2" />
+                
+                <!-- Cabezal del gancho -->
+                <rect x="${hookCenterX - 18}" y="${hookTopY - 6}" width="36" height="10" rx="3" fill="#9f1239" stroke="#f43f5e" stroke-width="1.5" />
+                
+                <!-- Abrazaderas laterales -->
+                <path d="M ${b.x - 4} ${hookTopY + 2} L ${b.x - 4} ${b.y + 14} L ${b.x} ${b.y + 14}" fill="none" stroke="#f43f5e" stroke-width="2.5" />
+                <path d="M ${b.x + BLOCK_WIDTH + 4} ${hookTopY + 2} L ${b.x + BLOCK_WIDTH + 4} ${b.y + 14} L ${b.x + BLOCK_WIDTH} ${b.y + 14}" fill="none" stroke="#f43f5e" stroke-width="2.5" />
+            `;
+            STAGE.appendChild(cablesMin);
+        }
+    }
+
+    // 4. Render de los Bloques
+    blockObjects.forEach(b => {
+        let fillColor, strokeColor, shadowGlow;
+
+        if (b.state === 'sorted') {
+            fillColor = '#064e3b';
+            strokeColor = '#10b981';
+            shadowGlow = 'rgba(16, 185, 129, 0.4)';
+        } else if (b.state === 'pivot') {
+            fillColor = '#78350f';
+            strokeColor = '#fbbf24';
+            shadowGlow = 'rgba(251, 191, 36, 0.7)';
+        } else if (b.state === 'min') {
+            fillColor = '#881337';
+            strokeColor = '#f43f5e';
+            shadowGlow = 'rgba(244, 63, 94, 0.7)';
+        } else {
+            // Pending (Rojizo como en la imagen de referencia)
+            fillColor = '#3f151b';
+            strokeColor = '#e11d48';
+            shadowGlow = 'none';
+        }
+
+        const blockGroup = document.createElementNS(SVG_NS, 'g');
+        blockGroup.innerHTML = `
+            <rect x="${b.x}" y="${b.y}" width="${BLOCK_WIDTH}" height="${b.height}" rx="6" 
+                  fill="${fillColor}" stroke="${strokeColor}" stroke-width="2.2" 
+                  style="filter: drop-shadow(0 0 6px ${shadowGlow}); transition: y 0.2s ease, x 0.3s ease;" />
+            <text x="${b.x + BLOCK_WIDTH / 2}" y="${b.y + b.height - 12}" 
+                  font-family="'JetBrains Mono', monospace" font-size="1.25rem" font-weight="800" 
+                  fill="#ffffff" text-anchor="middle" pointer-events="none">${b.val}</text>
+        `;
+        STAGE.appendChild(blockGroup);
     });
 }
 
-// --- CONFIGURACIÓN DEL ESCENARIO ---
-const NUM_ELEMENTS = 8;
-const FLOOR_Y = 320;     // Nivel del piso
-const LIFT_Y_PIVOT = 90; // Altura a la que la grúa sube el pivote
-const LIFT_Y_MIN = 170;  // Altura a la que sube el candidato/mínimo
-const START_X = 65;
-const SPACING_X = 105;
-
-let arr = [];
-let blockElements = [];
-const blocksStage = document.getElementById('blocks-stage');
-const craneSvg = document.getElementById('crane-svg');
-const statusText = document.getElementById('status-text');
-const btnStart = document.getElementById('btn-start');
-const btnReset = document.getElementById('btn-reset');
-
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-function getSlotX(index) {
-    return START_X + index * SPACING_X;
-}
-
-// Inicializar el arreglo y construir la vista
-function initSimulation() {
-    craneSvg.innerHTML = '';
-    blocksStage.innerHTML = '';
-    blockElements = [];
-    arr = [];
-
-    // Generar 8 números del 1 al 8 desordenados
-    const nums = [1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < NUM_ELEMENTS; i++) {
-        const val = nums[i];
-        arr.push(val);
-
-        const el = document.createElement('div');
-        el.className = 'block unsorted';
-        el.textContent = val;
-
-        // Altura proporcional al número
-        const height = 45 + val * 8;
-        el.style.height = `${height}px`;
-
-        const posX = getSlotX(i);
-        const posY = FLOOR_Y - height;
-
-        el.style.transform = `translate(${posX}px, ${posY}px)`;
-        el.dataset.x = posX;
-        el.dataset.y = posY;
-        el.dataset.height = height;
-
-        blocksStage.appendChild(el);
-        blockElements.push(el);
-    }
-
-    statusText.textContent = 'Arreglo listo. Haz clic en "Iniciar Dinámica".';
-}
-
-// Mover un bloque a una coordenada específica
-function moveBlock(index, x, y) {
-    const el = blockElements[index];
-    el.style.transform = `translate(${x}px, ${y}px)`;
-    el.dataset.x = x;
-    el.dataset.y = y;
-}
-
-// Dibujar la grúa, cables y ganchos conectando los bloques
-function updateCrane(pivotIndex = null, minIndex = null) {
-    craneSvg.innerHTML = '';
-    if (pivotIndex === null && minIndex === null) return;
-
-    let targetX = 0;
-    if (pivotIndex !== null && minIndex !== null) {
-        targetX = (parseFloat(blockElements[pivotIndex].dataset.x) + parseFloat(blockElements[minIndex].dataset.x)) / 2 + 29;
-    } else if (pivotIndex !== null) {
-        targetX = parseFloat(blockElements[pivotIndex].dataset.x) + 29;
-    } else {
-        targetX = parseFloat(blockElements[minIndex].dataset.x) + 29;
-    }
-
-    const trolleyY = 25;
-
-    // Carro de la grúa en el riel
-    const trolley = `
-        <rect x="${targetX - 25}" y="${trolleyY - 6}" width="50" height="14" rx="4" fill="#f59e0b" stroke="#fff" stroke-width="1.5" />
-        <circle cx="${targetX}" cy="${trolleyY + 1}" r="3" fill="#111" />
-    `;
-
-    let cables = '';
-
-    // Brazo izquierdo (Pivote)
-    if (pivotIndex !== null) {
-        const bx = parseFloat(blockElements[pivotIndex].dataset.x) + 29;
-        const by = parseFloat(blockElements[pivotIndex].dataset.y);
-        cables += `
-            <line x1="${targetX - 10}" y1="${trolleyY + 8}" x2="${bx - 12}" y2="${by - 12}" stroke="#fbbf24" stroke-width="2.5" />
-            <line x1="${targetX - 5}" y1="${trolleyY + 8}" x2="${bx + 12}" y2="${by - 12}" stroke="#fbbf24" stroke-width="2.5" />
-            <!-- Gancho -->
-            <rect x="${bx - 16}" y="${by - 16}" width="32" height="10" rx="3" fill="#d97706" stroke="#fbbf24" stroke-width="1.5" />
-            <path d="M ${bx - 18} ${by - 10} L ${bx - 18} ${by + 6} L ${bx - 10} ${by + 6}" fill="none" stroke="#fbbf24" stroke-width="2" />
-            <path d="M ${bx + 18} ${by - 10} L ${bx + 18} ${by + 6} L ${bx + 10} ${by + 6}" fill="none" stroke="#fbbf24" stroke-width="2" />
-        `;
-    }
-
-    // Brazo derecho (Mínimo o Comparando)
-    if (minIndex !== null) {
-        const bx = parseFloat(blockElements[minIndex].dataset.x) + 29;
-        const by = parseFloat(blockElements[minIndex].dataset.y);
-        cables += `
-            <line x1="${targetX + 5}" y1="${trolleyY + 8}" x2="${bx - 12}" y2="${by - 12}" stroke="#f43f5e" stroke-width="2.5" />
-            <line x1="${targetX + 10}" y1="${trolleyY + 8}" x2="${bx + 12}" y2="${by - 12}" stroke="#f43f5e" stroke-width="2.5" />
-            <!-- Gancho -->
-            <rect x="${bx - 16}" y="${by - 16}" width="32" height="10" rx="3" fill="#9f1239" stroke="#f43f5e" stroke-width="1.5" />
-            <path d="M ${bx - 18} ${by - 10} L ${bx - 18} ${by + 6} L ${bx - 10} ${by + 6}" fill="none" stroke="#f43f5e" stroke-width="2" />
-            <path d="M ${bx + 18} ${by - 10} L ${bx + 18} ${by + 6} L ${bx + 10} ${by + 6}" fill="none" stroke="#f43f5e" stroke-width="2" />
-        `;
-    }
-
-    craneSvg.innerHTML = trolley + cables;
-}
-
-// --- ALGORITMO SELECTION SORT CON MECÁNICA DE GRÚA ---
-async function startSelectionSort() {
+// --- ALGORITMO SELECTION SORT PASO A PASO ---
+async function runSelectionSort() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
 
-    btnStart.disabled = true;
-    btnReset.disabled = true;
+    BTN_RUN.disabled = true;
+    BTN_RESET.disabled = true;
 
-    for (let i = 0; i < NUM_ELEMENTS; i++) {
+    for (let i = 0; i < NUM_BLOCKS; i++) {
         let minIdx = i;
 
-        // 1. La grúa baja por el pivote en posición i y lo levanta
-        statusText.textContent = `Grúa engancha posición [${i}] (Valor: ${arr[i]}).`;
-        playServoSound();
-        const blockI = blockElements[i];
-        blockI.className = 'block pivot';
-        playClankSound();
+        // 1. Enganche y elevación del Pivote (Brazo Izquierdo)
+        STATUS_TERMINAL.textContent = `[PASO ${i+1}] ENGANCHANDO PIVOTE INDICE [${i}] (VALOR: ${blockObjects[i].val})`;
+        sfx.grab();
+        blockObjects[i].state = 'pivot';
+        blockObjects[i].setTarget(getSlotX(i), LIFT_PIVOT_Y);
+        renderScene(i, null);
+        await sleep(550);
 
-        // Elevar a la altura de pivote
-        moveBlock(i, getSlotX(i), LIFT_Y_PIVOT);
-        updateCrane(i, null);
-        await sleep(500);
+        for (let j = i + 1; j < NUM_BLOCKS; j++) {
+            STATUS_TERMINAL.textContent = `COMPARANDO PIVOTE [${blockObjects[minIdx].val}] CON INDICE [${j}] (VALOR: ${blockObjects[j].val})`;
+            sfx.move();
 
-        for (let j = i + 1; j < NUM_ELEMENTS; j++) {
-            statusText.textContent = `Buscando: Comparando con valor ${arr[j]} en posición [${j}]...`;
-            playCompareSound(arr[j]);
+            // Brazo derecho baja y levanta candidato j a altura media
+            blockObjects[j].state = 'min';
+            blockObjects[j].setTarget(getSlotX(j), LIFT_MIN_Y);
+            renderScene(i, j);
+            sfx.compare(blockObjects[j].val);
+            await sleep(500);
 
-            // Segundo brazo baja y sube el candidato para comparar
-            const blockJ = blockElements[j];
-            blockJ.className = 'block min';
-            moveBlock(j, getSlotX(j), LIFT_Y_MIN);
-            updateCrane(i, j);
-            await sleep(450);
+            if (blockObjects[j].val < blockObjects[minIdx].val) {
+                STATUS_TERMINAL.textContent = `NUEVO MINIMO ENCONTRADO: ${blockObjects[j].val} < ${blockObjects[minIdx].val}`;
+                sfx.grab();
 
-            if (arr[j] < arr[minIdx]) {
-                statusText.textContent = `¡Nuevo mínimo detectado! ${arr[j]} es menor que ${arr[minIdx]}.`;
-                playClankSound();
-
+                // Si había un mínimo anterior que no era i, devolverlo al suelo
                 if (minIdx !== i) {
-                    // Si ya teníamos otro mínimo previo, regresarlo a su lugar
-                    const prevMin = blockElements[minIdx];
-                    prevMin.className = 'block unsorted';
-                    moveBlock(minIdx, getSlotX(minIdx), FLOOR_Y - parseFloat(prevMin.dataset.height));
+                    blockObjects[minIdx].state = 'pending';
+                    blockObjects[minIdx].setTarget(getSlotX(minIdx), FLOOR_Y - blockObjects[minIdx].height);
                 }
+
                 minIdx = j;
-                await sleep(300);
+                await sleep(350);
             } else {
-                // Si no fue menor, se devuelve a su lugar
-                blockJ.className = 'block unsorted';
-                moveBlock(j, getSlotX(j), FLOOR_Y - parseFloat(blockJ.dataset.height));
-                updateCrane(i, null);
-                await sleep(250);
+                // No fue menor: regresarlo a la base
+                blockObjects[j].state = 'pending';
+                blockObjects[j].setTarget(getSlotX(j), FLOOR_Y - blockObjects[j].height);
+                renderScene(i, minIdx !== i ? minIdx : null);
+                await sleep(300);
             }
         }
 
-        // 2. Intercambio (Swap) si se halló un número menor
+        // 2. Intercambio (Swap) si se halló un mínimo
         if (minIdx !== i) {
-            statusText.textContent = `Intercambiando bloque ${arr[i]} con el mínimo ${arr[minIdx]}...`;
-            playServoSound();
+            STATUS_TERMINAL.textContent = `INTERCAMBIANDO POSICIONES [${i}] Y [${minIdx}]...`;
+            sfx.swap();
 
-            const xI = getSlotX(i);
-            const xMin = getSlotX(minIdx);
+            const targetXi = getSlotX(i);
+            const targetXmin = getSlotX(minIdx);
 
-            // Cruzar posiciones horizontalmente en el aire
-            moveBlock(i, xMin, LIFT_Y_PIVOT);
-            moveBlock(minIdx, xI, LIFT_Y_MIN);
-            updateCrane(i, minIdx);
-            await sleep(650);
+            // Traslado horizontal aéreo
+            blockObjects[i].setTarget(targetXmin, LIFT_PIVOT_Y);
+            blockObjects[minIdx].setTarget(targetXi, LIFT_MIN_Y);
+            renderScene(i, minIdx);
+            await sleep(700);
 
-            // Bajar ambos al piso en sus nuevas posiciones
-            playClankSound();
-            moveBlock(minIdx, xI, FLOOR_Y - parseFloat(blockElements[minIdx].dataset.height));
-            moveBlock(i, xMin, FLOOR_Y - parseFloat(blockElements[i].dataset.height));
+            // Descenso a los slots del piso
+            sfx.grab();
+            blockObjects[minIdx].setTarget(targetXi, FLOOR_Y - blockObjects[minIdx].height);
+            blockObjects[i].setTarget(targetXmin, FLOOR_Y - blockObjects[i].height);
+            renderScene(i, minIdx);
+            await sleep(400);
 
-            // Actualizar lógica del arreglo y elementos DOM
-            let tempVal = arr[i];
-            arr[i] = arr[minIdx];
-            arr[minIdx] = tempVal;
+            // Reorganización en el array de objetos
+            const temp = blockObjects[i];
+            blockObjects[i] = blockObjects[minIdx];
+            blockObjects[minIdx] = temp;
 
-            let tempEl = blockElements[i];
-            blockElements[i] = blockElements[minIdx];
-            blockElements[minIdx] = tempEl;
-
-            blockElements[minIdx].className = 'block unsorted';
-            await sleep(300);
+            blockObjects[minIdx].state = 'pending';
         } else {
-            // No hubo intercambio, se baja a su lugar
-            moveBlock(i, getSlotX(i), FLOOR_Y - parseFloat(blockElements[i].dataset.height));
-            await sleep(250);
+            // El pivote ya era el menor: descenso
+            blockObjects[i].setTarget(getSlotX(i), FLOOR_Y - blockObjects[i].height);
+            await sleep(300);
         }
 
-        // Elemento consolidado en su posición final
-        blockElements[i].className = 'block sorted';
-        craneSvg.innerHTML = '';
-        await sleep(200);
+        // Marcado como ordenado (Verde)
+        blockObjects[i].state = 'sorted';
+        renderScene(null, null);
+        await sleep(250);
     }
 
-    statusText.textContent = '🎉 ¡Completado! Arreglo ordenado correctamente.';
-    playVictory();
-    btnStart.disabled = false;
-    btnReset.disabled = false;
+    STATUS_TERMINAL.textContent = "OPERACION COMPLETADA // ARREGLO ORDENADO";
+    sfx.success();
+    renderScene(null, null);
+
+    BTN_RUN.disabled = false;
+    BTN_RESET.disabled = false;
 }
 
-// Iniciar al cargar la ventana
-window.onload = initSimulation;
+// Inicialización inicial
+window.onload = setupArray;
