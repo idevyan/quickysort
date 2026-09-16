@@ -1,269 +1,261 @@
-// --- SISTEMA DE AUDIO MECÁNICO / ARCADE ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
-    try {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + duration);
-    } catch (e) {}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-// Sonido de servo de la grúa moviéndose
-function playServoSound() {
-    playTone(220, 'triangle', 0.18, 0.08);
-    setTimeout(() => playTone(180, 'sawtooth', 0.12, 0.05), 50);
+body {
+    min-height: 100vh;
+    background-color: #07111e;
+    /* Cuadrícula tipo Blueprint / Grid exacto a la imagen */
+    background-image: 
+        linear-gradient(rgba(0, 162, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 162, 255, 0.08) 1px, transparent 1px);
+    background-size: 36px 36px;
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    overflow: hidden;
 }
 
-// Sonido mecánico de gancho enganchando
-function playClankSound() {
-    playTone(520, 'square', 0.08, 0.15);
-    setTimeout(() => playTone(800, 'sine', 0.06, 0.1), 30);
+/* Paneles de Vidrio (Glassmorphism) */
+.glass-panel {
+    width: 100%;
+    max-width: 950px;
+    background: rgba(13, 27, 46, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 180, 255, 0.22);
+    border-radius: 16px;
+    padding: 16px 28px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    z-index: 20;
 }
 
-// Sonido de comparación rápida
-function playCompareSound(val) {
-    playTone(300 + val * 60, 'sine', 0.08, 0.08);
+/* Cabecera */
+.header-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-// Sonido de fanfarria al completar
-function playVictory() {
-    const notes = [440, 554, 659, 880];
-    notes.forEach((freq, idx) => {
-        setTimeout(() => playTone(freq, 'triangle', 0.2, 0.15), idx * 110);
-    });
+.badge {
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: #00d2ff;
+    background: rgba(0, 210, 255, 0.12);
+    padding: 2px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 210, 255, 0.3);
 }
 
-// --- CONFIGURACIÓN DEL ESCENARIO ---
-const NUM_ELEMENTS = 8;
-const FLOOR_Y = 320;     // Nivel del piso
-const LIFT_Y_PIVOT = 90; // Altura a la que la grúa sube el pivote
-const LIFT_Y_MIN = 170;  // Altura a la que sube el candidato/mínimo
-const START_X = 65;
-const SPACING_X = 105;
-
-let arr = [];
-let blockElements = [];
-const blocksStage = document.getElementById('blocks-stage');
-const craneSvg = document.getElementById('crane-svg');
-const statusText = document.getElementById('status-text');
-const btnStart = document.getElementById('btn-start');
-const btnReset = document.getElementById('btn-reset');
-
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-function getSlotX(index) {
-    return START_X + index * SPACING_X;
+.header-titles h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 3px 0;
+    color: #ffffff;
 }
 
-// Inicializar el arreglo y construir la vista
-function initSimulation() {
-    craneSvg.innerHTML = '';
-    blocksStage.innerHTML = '';
-    blockElements = [];
-    arr = [];
-
-    // Generar 8 números del 1 al 8 desordenados
-    const nums = [1, 2, 3, 4, 5, 6, 7, 8].sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < NUM_ELEMENTS; i++) {
-        const val = nums[i];
-        arr.push(val);
-
-        const el = document.createElement('div');
-        el.className = 'block unsorted';
-        el.textContent = val;
-
-        // Altura proporcional al número
-        const height = 45 + val * 8;
-        el.style.height = `${height}px`;
-
-        const posX = getSlotX(i);
-        const posY = FLOOR_Y - height;
-
-        el.style.transform = `translate(${posX}px, ${posY}px)`;
-        el.dataset.x = posX;
-        el.dataset.y = posY;
-        el.dataset.height = height;
-
-        blocksStage.appendChild(el);
-        blockElements.push(el);
-    }
-
-    statusText.textContent = 'Arreglo listo. Haz clic en "Iniciar Dinámica".';
+.author {
+    font-size: 0.85rem;
+    color: #94a3b8;
 }
 
-// Mover un bloque a una coordenada específica
-function moveBlock(index, x, y) {
-    const el = blockElements[index];
-    el.style.transform = `translate(${x}px, ${y}px)`;
-    el.dataset.x = x;
-    el.dataset.y = y;
+.author strong {
+    color: #f59e0b;
 }
 
-// Dibujar la grúa, cables y ganchos conectando los bloques
-function updateCrane(pivotIndex = null, minIndex = null) {
-    craneSvg.innerHTML = '';
-    if (pivotIndex === null && minIndex === null) return;
-
-    let targetX = 0;
-    if (pivotIndex !== null && minIndex !== null) {
-        targetX = (parseFloat(blockElements[pivotIndex].dataset.x) + parseFloat(blockElements[minIndex].dataset.x)) / 2 + 29;
-    } else if (pivotIndex !== null) {
-        targetX = parseFloat(blockElements[pivotIndex].dataset.x) + 29;
-    } else {
-        targetX = parseFloat(blockElements[minIndex].dataset.x) + 29;
-    }
-
-    const trolleyY = 25;
-
-    // Carro de la grúa en el riel
-    const trolley = `
-        <rect x="${targetX - 25}" y="${trolleyY - 6}" width="50" height="14" rx="4" fill="#f59e0b" stroke="#fff" stroke-width="1.5" />
-        <circle cx="${targetX}" cy="${trolleyY + 1}" r="3" fill="#111" />
-    `;
-
-    let cables = '';
-
-    // Brazo izquierdo (Pivote)
-    if (pivotIndex !== null) {
-        const bx = parseFloat(blockElements[pivotIndex].dataset.x) + 29;
-        const by = parseFloat(blockElements[pivotIndex].dataset.y);
-        cables += `
-            <line x1="${targetX - 10}" y1="${trolleyY + 8}" x2="${bx - 12}" y2="${by - 12}" stroke="#fbbf24" stroke-width="2.5" />
-            <line x1="${targetX - 5}" y1="${trolleyY + 8}" x2="${bx + 12}" y2="${by - 12}" stroke="#fbbf24" stroke-width="2.5" />
-            <!-- Gancho -->
-            <rect x="${bx - 16}" y="${by - 16}" width="32" height="10" rx="3" fill="#d97706" stroke="#fbbf24" stroke-width="1.5" />
-            <path d="M ${bx - 18} ${by - 10} L ${bx - 18} ${by + 6} L ${bx - 10} ${by + 6}" fill="none" stroke="#fbbf24" stroke-width="2" />
-            <path d="M ${bx + 18} ${by - 10} L ${bx + 18} ${by + 6} L ${bx + 10} ${by + 6}" fill="none" stroke="#fbbf24" stroke-width="2" />
-        `;
-    }
-
-    // Brazo derecho (Mínimo o Comparando)
-    if (minIndex !== null) {
-        const bx = parseFloat(blockElements[minIndex].dataset.x) + 29;
-        const by = parseFloat(blockElements[minIndex].dataset.y);
-        cables += `
-            <line x1="${targetX + 5}" y1="${trolleyY + 8}" x2="${bx - 12}" y2="${by - 12}" stroke="#f43f5e" stroke-width="2.5" />
-            <line x1="${targetX + 10}" y1="${trolleyY + 8}" x2="${bx + 12}" y2="${by - 12}" stroke="#f43f5e" stroke-width="2.5" />
-            <!-- Gancho -->
-            <rect x="${bx - 16}" y="${by - 16}" width="32" height="10" rx="3" fill="#9f1239" stroke="#f43f5e" stroke-width="1.5" />
-            <path d="M ${bx - 18} ${by - 10} L ${bx - 18} ${by + 6} L ${bx - 10} ${by + 6}" fill="none" stroke="#f43f5e" stroke-width="2" />
-            <path d="M ${bx + 18} ${by - 10} L ${bx + 18} ${by + 6} L ${bx + 10} ${by + 6}" fill="none" stroke="#f43f5e" stroke-width="2" />
-        `;
-    }
-
-    craneSvg.innerHTML = trolley + cables;
+/* Indicador de estado dinámico */
+.status-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px 18px;
+    border-radius: 10px;
+    max-width: 420px;
 }
 
-// --- ALGORITMO SELECTION SORT CON MECÁNICA DE GRÚA ---
-async function startSelectionSort() {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-
-    btnStart.disabled = true;
-    btnReset.disabled = true;
-
-    for (let i = 0; i < NUM_ELEMENTS; i++) {
-        let minIdx = i;
-
-        // 1. La grúa baja por el pivote en posición i y lo levanta
-        statusText.textContent = `Grúa engancha posición [${i}] (Valor: ${arr[i]}).`;
-        playServoSound();
-        const blockI = blockElements[i];
-        blockI.className = 'block pivot';
-        playClankSound();
-
-        // Elevar a la altura de pivote
-        moveBlock(i, getSlotX(i), LIFT_Y_PIVOT);
-        updateCrane(i, null);
-        await sleep(500);
-
-        for (let j = i + 1; j < NUM_ELEMENTS; j++) {
-            statusText.textContent = `Buscando: Comparando con valor ${arr[j]} en posición [${j}]...`;
-            playCompareSound(arr[j]);
-
-            // Segundo brazo baja y sube el candidato para comparar
-            const blockJ = blockElements[j];
-            blockJ.className = 'block min';
-            moveBlock(j, getSlotX(j), LIFT_Y_MIN);
-            updateCrane(i, j);
-            await sleep(450);
-
-            if (arr[j] < arr[minIdx]) {
-                statusText.textContent = `¡Nuevo mínimo detectado! ${arr[j]} es menor que ${arr[minIdx]}.`;
-                playClankSound();
-
-                if (minIdx !== i) {
-                    // Si ya teníamos otro mínimo previo, regresarlo a su lugar
-                    const prevMin = blockElements[minIdx];
-                    prevMin.className = 'block unsorted';
-                    moveBlock(minIdx, getSlotX(minIdx), FLOOR_Y - parseFloat(prevMin.dataset.height));
-                }
-                minIdx = j;
-                await sleep(300);
-            } else {
-                // Si no fue menor, se devuelve a su lugar
-                blockJ.className = 'block unsorted';
-                moveBlock(j, getSlotX(j), FLOOR_Y - parseFloat(blockJ.dataset.height));
-                updateCrane(i, null);
-                await sleep(250);
-            }
-        }
-
-        // 2. Intercambio (Swap) si se halló un número menor
-        if (minIdx !== i) {
-            statusText.textContent = `Intercambiando bloque ${arr[i]} con el mínimo ${arr[minIdx]}...`;
-            playServoSound();
-
-            const xI = getSlotX(i);
-            const xMin = getSlotX(minIdx);
-
-            // Cruzar posiciones horizontalmente en el aire
-            moveBlock(i, xMin, LIFT_Y_PIVOT);
-            moveBlock(minIdx, xI, LIFT_Y_MIN);
-            updateCrane(i, minIdx);
-            await sleep(650);
-
-            // Bajar ambos al piso en sus nuevas posiciones
-            playClankSound();
-            moveBlock(minIdx, xI, FLOOR_Y - parseFloat(blockElements[minIdx].dataset.height));
-            moveBlock(i, xMin, FLOOR_Y - parseFloat(blockElements[i].dataset.height));
-
-            // Actualizar lógica del arreglo y elementos DOM
-            let tempVal = arr[i];
-            arr[i] = arr[minIdx];
-            arr[minIdx] = tempVal;
-
-            let tempEl = blockElements[i];
-            blockElements[i] = blockElements[minIdx];
-            blockElements[minIdx] = tempEl;
-
-            blockElements[minIdx].className = 'block unsorted';
-            await sleep(300);
-        } else {
-            // No hubo intercambio, se baja a su lugar
-            moveBlock(i, getSlotX(i), FLOOR_Y - parseFloat(blockElements[i].dataset.height));
-            await sleep(250);
-        }
-
-        // Elemento consolidado en su posición final
-        blockElements[i].className = 'block sorted';
-        craneSvg.innerHTML = '';
-        await sleep(200);
-    }
-
-    statusText.textContent = '🎉 ¡Completado! Arreglo ordenado correctamente.';
-    playVictory();
-    btnStart.disabled = false;
-    btnReset.disabled = false;
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #00e5ff;
+    box-shadow: 0 0 10px #00e5ff;
+    animation: pulse 1.5s infinite;
 }
 
-// Iniciar al cargar la ventana
-window.onload = initSimulation;
+#status-text {
+    font-size: 0.85rem;
+    font-family: 'Chakra Petch', monospace;
+    color: #e2e8f0;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Escenario y Grúa */
+.stage-container {
+    position: relative;
+    width: 100%;
+    max-width: 950px;
+    height: 440px;
+    margin: 10px 0;
+}
+
+.rail {
+    position: absolute;
+    top: 25px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(0, 162, 255, 0.3);
+    box-shadow: 0 0 8px rgba(0, 162, 255, 0.5);
+}
+
+.floor-line {
+    position: absolute;
+    bottom: 25px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.crane-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.blocks-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+}
+
+/* Bloques con números legibles */
+.block {
+    position: absolute;
+    width: 58px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.6);
+}
+
+/* Estados de color idénticos a la imagen */
+.block.unsorted {
+    background: #2b1419;
+    border: 2px solid #ef4444;
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.3);
+}
+
+.block.pivot {
+    background: #3d2a0e;
+    border: 2px solid #fbbf24;
+    color: #ffffff;
+    box-shadow: 0 0 22px rgba(251, 191, 36, 0.6);
+}
+
+.block.min {
+    background: #471119;
+    border: 2px solid #f43f5e;
+    color: #ffffff;
+    box-shadow: 0 0 22px rgba(244, 63, 94, 0.7);
+}
+
+.block.sorted {
+    background: #0d2826;
+    border: 2px solid #14b8a6;
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(20, 184, 166, 0.35);
+}
+
+/* Panel de Controles y Leyenda */
+.controls-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.legend {
+    display: flex;
+    gap: 18px;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.dot.sorted { background: #14b8a6; }
+.dot.pivot { background: #fbbf24; }
+.dot.min { background: #f43f5e; }
+
+.btn {
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.btn-primary {
+    background: #0284c7;
+    color: #ffffff;
+    border: 1px solid #38bdf8;
+    box-shadow: 0 0 15px rgba(2, 132, 199, 0.4);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #0369a1;
+    transform: translateY(-2px);
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
