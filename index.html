@@ -3,54 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Selection Sort - Bryan Gonzalez</title>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>Estructura de Datos - Selection Sort</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Panel Superior Glassmorphism -->
-    <header class="glass-panel header-panel">
-        <div class="header-titles">
-            <span class="badge">ESTRUCTURA DE DATOS</span>
-            <h1>Dinámica de Selection Sort</h1>
-            <p class="author">Autor: <strong>Bryan Gonzalez</strong></p>
-        </div>
-        <div class="status-display">
-            <div class="status-indicator"></div>
-            <span id="status-text">Sistema listo. Presiona "Iniciar Dinámica".</span>
-        </div>
-    </header>
+    <div class="workspace">
+        <!-- HUD SUPERIOR GLASSMORPHISM -->
+        <header class="glass-panel hud-top">
+            <div class="hud-col">
+                <span class="sub-tag">ESTRUCTURA DE DATOS</span>
+                <h1 class="main-title">DINAMICA DE SELECTION SORT</h1>
+            </div>
+            <div class="hud-col center">
+                <span class="label">ESTADO DE OPERACION</span>
+                <div class="terminal-text" id="status-terminal">SISTEMA EN ESPERA // PRESIONE EJECUTAR</div>
+            </div>
+            <div class="hud-col right">
+                <span class="sub-tag">DESARROLLADOR</span>
+                <div class="author-tag">BRYAN GONZALEZ</div>
+            </div>
+        </header>
 
-    <!-- Escenario Principal (Cuadrícula + Grúa) -->
-    <main class="stage-container">
-        <!-- Riel superior -->
-        <div class="rail"></div>
+        <!-- ESCENARIO MECANICO VECTORIAL (SVG INTERACTIVO) -->
+        <main class="viewport-box">
+            <svg id="stage-svg" viewBox="0 0 1000 480" preserveAspectRatio="xMidYMid meet"></svg>
+        </main>
 
-        <!-- SVG para dibujar el carro, cables y ganchos de la grúa -->
-        <svg id="crane-svg" class="crane-svg"></svg>
+        <!-- PANEL DE CONTROL INFERIOR GLASSMORPHISM -->
+        <footer class="glass-panel hud-bottom">
+            <div class="control-group">
+                <button id="btn-reset" class="btn-tech" onclick="setupArray()">NUEVO ARREGLO</button>
+                <button id="btn-run" class="btn-tech primary" onclick="runSelectionSort()">EJECUTAR ORDENAMIENTO</button>
+            </div>
 
-        <!-- Contenedor donde se mueven los bloques -->
-        <div id="blocks-stage" class="blocks-stage"></div>
-
-        <!-- Línea del suelo -->
-        <div class="floor-line"></div>
-    </main>
-
-    <!-- Panel Inferior de Controles Glassmorphism -->
-    <footer class="glass-panel controls-panel">
-        <button id="btn-reset" class="btn btn-secondary" onclick="initSimulation()">
-            🔄 Generar Nuevo Arreglo
-        </button>
-        <div class="legend">
-            <span class="legend-item"><span class="dot sorted"></span> Ordenado</span>
-            <span class="legend-item"><span class="dot pivot"></span> Pivote [i]</span>
-            <span class="legend-item"><span class="dot min"></span> Mínimo / Comparando</span>
-        </div>
-        <button id="btn-start" class="btn btn-primary" onclick="startSelectionSort()">
-            ▶ Iniciar Dinámica
-        </button>
-    </footer>
+            <div class="telemetry-legend">
+                <div class="legend-box"><span class="box-indicator sorted"></span> PROCESADO (ORDENADO)</div>
+                <div class="legend-box"><span class="box-indicator pivot"></span> PIVOTE CARRO 1</div>
+                <div class="legend-box"><span class="box-indicator min"></span> EVALUACION / MINIMO</div>
+                <div class="legend-box"><span class="box-indicator pending"></span> PENDIENTE</div>
+            </div>
+        </footer>
+    </div>
 
     <script src="script.js"></script>
 </body>
