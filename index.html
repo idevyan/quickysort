@@ -4,40 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Selection Sort - Bryan Gonzalez</title>
-    <!-- Fuente moderna -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <!-- Hoja de Estilos -->
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Figuras decorativas de fondo para el efecto de cristal -->
-    <div class="circle circle-1"></div>
-    <div class="circle circle-2"></div>
-    <div class="circle circle-3"></div>
-
-    <!-- Contenedor Principal Glassmorphism -->
-    <div class="glass-container">
-        <header>
-            <h2>Estructura de Datos</h2>
+    <!-- Panel Superior Glassmorphism -->
+    <header class="glass-panel header-panel">
+        <div class="header-titles">
+            <span class="badge">ESTRUCTURA DE DATOS</span>
             <h1>Dinámica de Selection Sort</h1>
-            <p class="author">Desarrollado por: <span>Bryan Gonzalez</span></p>
-        </header>
-
-        <!-- Mensajes de estado -->
-        <div class="status-box" id="status">Presiona "Iniciar Dinámica" para comenzar</div>
-
-        <!-- Área de las barras a ordenar -->
-        <div class="array-container" id="array-container"></div>
-
-        <!-- Botones de Control -->
-        <div class="controls">
-            <button id="btn-generate" onclick="generateArray()">🎲 Nuevo Arreglo</button>
-            <button id="btn-sort" class="btn-primary" onclick="selectionSort()">🚀 Iniciar Dinámica</button>
+            <p class="author">Autor: <strong>Bryan Gonzalez</strong></p>
         </div>
-    </div>
+        <div class="status-display">
+            <div class="status-indicator"></div>
+            <span id="status-text">Sistema listo. Presiona "Iniciar Dinámica".</span>
+        </div>
+    </header>
 
-    <!-- Lógica y Sonidos en JavaScript -->
+    <!-- Escenario Principal (Cuadrícula + Grúa) -->
+    <main class="stage-container">
+        <!-- Riel superior -->
+        <div class="rail"></div>
+
+        <!-- SVG para dibujar el carro, cables y ganchos de la grúa -->
+        <svg id="crane-svg" class="crane-svg"></svg>
+
+        <!-- Contenedor donde se mueven los bloques -->
+        <div id="blocks-stage" class="blocks-stage"></div>
+
+        <!-- Línea del suelo -->
+        <div class="floor-line"></div>
+    </main>
+
+    <!-- Panel Inferior de Controles Glassmorphism -->
+    <footer class="glass-panel controls-panel">
+        <button id="btn-reset" class="btn btn-secondary" onclick="initSimulation()">
+            🔄 Generar Nuevo Arreglo
+        </button>
+        <div class="legend">
+            <span class="legend-item"><span class="dot sorted"></span> Ordenado</span>
+            <span class="legend-item"><span class="dot pivot"></span> Pivote [i]</span>
+            <span class="legend-item"><span class="dot min"></span> Mínimo / Comparando</span>
+        </div>
+        <button id="btn-start" class="btn btn-primary" onclick="startSelectionSort()">
+            ▶ Iniciar Dinámica
+        </button>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
