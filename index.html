@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selection Sort - Bryan Gonzalez</title>
+    <!-- Fuente moderna -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Hoja de Estilos -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Figuras decorativas de fondo para el efecto de cristal -->
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+    <div class="circle circle-3"></div>
+
+    <!-- Contenedor Principal Glassmorphism -->
+    <div class="glass-container">
+        <header>
+            <h2>Estructura de Datos</h2>
+            <h1>Dinámica de Selection Sort</h1>
+            <p class="author">Desarrollado por: <span>Bryan Gonzalez</span></p>
+        </header>
+
+        <!-- Mensajes de estado -->
+        <div class="status-box" id="status">Presiona "Iniciar Dinámica" para comenzar</div>
+
+        <!-- Área de las barras a ordenar -->
+        <div class="array-container" id="array-container"></div>
+
+        <!-- Botones de Control -->
+        <div class="controls">
+            <button id="btn-generate" onclick="generateArray()">🎲 Nuevo Arreglo</button>
+            <button id="btn-sort" class="btn-primary" onclick="selectionSort()">🚀 Iniciar Dinámica</button>
+        </div>
+    </div>
+
+    <!-- Lógica y Sonidos en JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
