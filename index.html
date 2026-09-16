@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Estructura de Datos - Selection Sort</title>
+    <title>Estructura de Datos - Selection Sort & Busqueda Binaria</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -16,35 +16,64 @@
         <header class="glass-panel hud-top">
             <div class="hud-col">
                 <span class="sub-tag">ESTRUCTURA DE DATOS</span>
-                <h1 class="main-title">DINAMICA DE SELECTION SORT</h1>
+                <h1 class="main-title">DINAMICA DE SELECTION SORT & BUSQUEDA BINARIA</h1>
             </div>
             <div class="hud-col center">
-                <span class="label">ESTADO DE OPERACION</span>
-                <div class="terminal-text" id="status-terminal">SISTEMA EN ESPERA // PRESIONE EJECUTAR</div>
+                <span class="label">TELEMETRIA DE CONTROL</span>
+                <div class="terminal-text" id="status-terminal">SISTEMA EN ESPERA // SELECCIONE UNA OPERACION</div>
             </div>
             <div class="hud-col right">
-                <span class="sub-tag">DESARROLLADOR</span>
+                <span class="sub-tag">AUTOR</span>
                 <div class="author-tag">BRYAN GONZALEZ</div>
             </div>
         </header>
 
-        <!-- ESCENARIO MECANICO VECTORIAL (SVG INTERACTIVO) -->
+        <!-- ESCENARIO MECANICO DE LA GRUA (SVG) -->
         <main class="viewport-box">
             <svg id="stage-svg" viewBox="0 0 1000 480" preserveAspectRatio="xMidYMid meet"></svg>
         </main>
 
         <!-- PANEL DE CONTROL INFERIOR GLASSMORPHISM -->
         <footer class="glass-panel hud-bottom">
-            <div class="control-group">
-                <button id="btn-reset" class="btn-tech" onclick="setupArray()">NUEVO ARREGLO</button>
-                <button id="btn-run" class="btn-tech primary" onclick="runSelectionSort()">EJECUTAR ORDENAMIENTO</button>
+            <!-- SECCION DE ORDENAMIENTO -->
+            <div class="control-section">
+                <span class="section-label">SELECTION SORT</span>
+                <div class="btn-cluster">
+                    <button id="btn-reset" class="btn-tech" onclick="setupArray(false)">NUEVO ARREGLO</button>
+                    <button id="btn-run-sort" class="btn-tech primary" onclick="runSelectionSort()">ORDENAR</button>
+                </div>
             </div>
 
+            <!-- SECCION DE CONTROL GENERAL (DETENER) -->
+            <div class="control-section">
+                <span class="section-label">INTERRUPCION</span>
+                <button id="btn-stop" class="btn-tech danger" onclick="stopExecution()" disabled>DETENER</button>
+            </div>
+
+            <!-- SECCION DE BUSQUEDA BINARIA -->
+            <div class="control-section">
+                <span class="section-label">BUSQUEDA BINARIA</span>
+                <div class="search-cluster">
+                    <label for="target-select" class="input-label">VALOR:</label>
+                    <select id="target-select" class="tech-select">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4" selected>4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                    </select>
+                    <button id="btn-run-search" class="btn-tech search" onclick="runBinarySearch()">BUSCAR</button>
+                </div>
+            </div>
+
+            <!-- LEYENDA -->
             <div class="telemetry-legend">
-                <div class="legend-box"><span class="box-indicator sorted"></span> PROCESADO (ORDENADO)</div>
-                <div class="legend-box"><span class="box-indicator pivot"></span> PIVOTE CARRO 1</div>
-                <div class="legend-box"><span class="box-indicator min"></span> EVALUACION / MINIMO</div>
-                <div class="legend-box"><span class="box-indicator pending"></span> PENDIENTE</div>
+                <div class="legend-box"><span class="box-indicator sorted"></span> ORDENADO / LOCALIZADO</div>
+                <div class="legend-box"><span class="box-indicator pivot"></span> PIVOTE / RANGO</div>
+                <div class="legend-box"><span class="box-indicator min"></span> EVALUACION / MEDIO</div>
             </div>
         </footer>
     </div>
